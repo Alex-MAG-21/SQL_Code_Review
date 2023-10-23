@@ -1,25 +1,34 @@
 create procedure syn.usp_ImportFileCustomerSeasonal
 	@ID_Record int
+	
+-- 1.Ключевые слова, названия системных функций, операторы пишутся со строчной буквы
 AS
 set nocount on
 begin
+	-- 2.Для объявления переменных declare используется один раз
 	declare @RowCount int = (select count(*) from syn.SA_CustomerSeasonal)
 	declare @ErrorMessage varchar(max)
-
+	
+-- 3.Комментарий должен быть с таким же отступом как и код, к которому он относится
 -- Проверка на корректность загрузки
 	if not exists (
+	-- 4.В условных операторах весь блок смещается на 1 отступ 
 	select 1
+	-- 5.Неправильное наименование алиаса
 	from syn.ImportFile as f
 	where f.ID = @ID_Record
 		and f.FlagLoaded = cast(1 as bit)
 	)
+		-- 6.begin/end должны быть на одном уровне с if и else
 		begin
 			set @ErrorMessage = 'Ошибка при загрузке файла, проверьте корректность данных'
 
 			raiserror(@ErrorMessage, 3, 1)
+			-- 7.Отсутствует пустая строка перед return
 			return
 		end
-
+	
+	-- 8.Отсутствует пробел между комментрарием и --
 	--Чтение из слоя временных данных
 	select
 		c.ID as ID_dbo_Customer
@@ -40,7 +49,8 @@ begin
 	where try_cast(cs.DateBegin as date) is not null
 		and try_cast(cs.DateEnd as date) is not null
 		and try_cast(isnull(cs.FlagActive, 0) as bit) is not null
-
+	
+	-- 9.Для комментариев в несколько строк используется конструкция /* */
 	-- Определяем некорректные записи
 	-- Добавляем причину, по которой запись считается некорректной
 	select
@@ -115,6 +125,8 @@ begin
 			,isnull(format(try_cast(DateEnd as date), 'dd.MM.yyyy', 'ru-RU'), DateEnd) as 'Дата окончания'
 			,FlagActive as 'Активность'
 			,Reason as 'Причина'
+		
+		-- 10.Отсутствует алиас для объекта #BadInsertedRows
 		from #BadInsertedRows
 
 		return
