@@ -1,34 +1,36 @@
+-- 1. В начале скрипта отсутствует поясняющий комментарий
 create procedure syn.usp_ImportFileCustomerSeasonal
 	@ID_Record int
 	
--- 1.Ключевые слова, названия системных функций, операторы пишутся со строчной буквы
+-- 2.Ключевые слова, названия системных функций, операторы пишутся со строчной буквы
 AS
 set nocount on
 begin
-	-- 2.Для объявления переменных declare используется один раз
+	-- 3.Для объявления переменных declare используется один раз
 	declare @RowCount int = (select count(*) from syn.SA_CustomerSeasonal)
+	-- 4.Рекомендуется при объявлении типов не использовать длину поля max
 	declare @ErrorMessage varchar(max)
 	
--- 3.Комментарий должен быть с таким же отступом как и код, к которому он относится
+-- 5.Комментарий должен быть с таким же отступом как и код, к которому он относится
 -- Проверка на корректность загрузки
 	if not exists (
-	-- 4.В условных операторах весь блок смещается на 1 отступ 
+	-- 6.В условных операторах весь блок смещается на 1 отступ 
 	select 1
-	-- 5.Неправильное наименование алиаса
+	-- 7.Неправильное наименование алиаса
 	from syn.ImportFile as f
 	where f.ID = @ID_Record
 		and f.FlagLoaded = cast(1 as bit)
 	)
-		-- 6.begin/end должны быть на одном уровне с if и else
+		-- 8.begin/end должны быть на одном уровне с if и else
 		begin
 			set @ErrorMessage = 'Ошибка при загрузке файла, проверьте корректность данных'
 
 			raiserror(@ErrorMessage, 3, 1)
-			-- 7.Отсутствует пустая строка перед return
+			-- 9.Отсутствует пустая строка перед return
 			return
 		end
 	
-	-- 8.Отсутствует пробел между комментрарием и --
+	-- 10.Отсутствует пробел между комментарием и --
 	--Чтение из слоя временных данных
 	select
 		c.ID as ID_dbo_Customer
@@ -39,23 +41,26 @@ begin
 		,c_dist.ID as ID_dbo_CustomerDistributor
 		,cast(isnull(cs.FlagActive, 0) as bit) as FlagActive
 	into #CustomerSeasonal
+	-- 11.Пропущено ключевое слово as
 	from syn.SA_CustomerSeasonal cs
-		join dbo.Customer as c on c.UID_DS = cs.UID_DS_Customer
-			and c.ID_mapping_DataSource = 1
-		join dbo.Season as s on s.Name = cs.Season
-		join dbo.Customer as c_dist on c_dist.UID_DS = cs.UID_DS_CustomerDistributor
-			and cd.ID_mapping_DataSource = 1
-		join syn.CustomerSystemType as cst on cs.CustomerSystemType = cst.Name
+		join dbo.Customer as c on c.UID_DS  cs.UID_DS_Customer
+			and c.ID_mapping_DataSource  1
+		join dbo.Season as s on s.Name  cs.Season
+		join dbo.Customer as c_dist on c_dist.UID_DS  cs.UID_DS_CustomerDistributor
+			and cd.ID_mapping_DataSource  1
+		join syn.CustomerSystemType as cst on cs.CustomerSystemType  cst.Name
 	where try_cast(cs.DateBegin as date) is not null
 		and try_cast(cs.DateEnd as date) is not null
 		and try_cast(isnull(cs.FlagActive, 0) as bit) is not null
 	
-	-- 9.Для комментариев в несколько строк используется конструкция /* */
+	-- 12.Для комментариев в несколько строк используется конструкция /* */
 	-- Определяем некорректные записи
 	-- Добавляем причину, по которой запись считается некорректной
 	select
+		-- 13. В данном случае cs.* нет необходимости переносить на новую строку
 		cs.*
 		,case
+			-- 14. результат должен находиться на новой строке и с одним отступом от when
 			when c.ID is null then 'UID клиента отсутствует в справочнике "Клиент"'
 			when c_dist.ID is null then 'UID дистрибьютора отсутствует в справочнике "Клиент"'
 			when s.ID is null then 'Сезон отсутствует в справочнике "Сезон"'
@@ -66,9 +71,11 @@ begin
 		end as Reason
 	into #BadInsertedRows
 	from syn.SA_CustomerSeasonal as cs
-	left join dbo.Customer as c on c.UID_DS = cs.UID_DS_Customer
-		and c.ID_mapping_DataSource = 1
-	left join dbo.Customer as c_dist on c_dist.UID_DS = cs.UID_DS_CustomerDistributor and c_dist.ID_mapping_DataSource = 1
+	-- 15.Все виды join пишутся с одним отступом
+	-- 16.В двух последующих join в условии пропущен знак =
+	left join dbo.Customer as c on c.UID_DS  cs.UID_DS_Customer
+		and c.ID_mapping_DataSource  1
+	left join dbo.Customer as c_dist on c_dist.UID_DS  cs.UID_DS_CustomerDistributor and c_dist.ID_mapping_DataSource = 1
 	left join dbo.Season as s on s.Name = cs.Season
 	left join syn.CustomerSystemType as cst on cst.Name = cs.CustomerSystemType
 	where cc.ID is null
@@ -105,6 +112,7 @@ begin
 	when not matched then
 		insert (ID_dbo_Customer, ID_CustomerSystemType, ID_Season, DateBegin, DateEnd, ID_dbo_CustomerDistributor, FlagActive)
 		values (s.ID_dbo_Customer, s.ID_CustomerSystemType, s.ID_Season, s.DateBegin, s.DateEnd, s.ID_dbo_CustomerDistributor, s.FlagActive)
+	-- 17.Нет необходимости переносить ; на новую строку
 	;
 
 	-- Информационное сообщение
@@ -124,9 +132,8 @@ begin
 			,isnull(format(try_cast(DateBegin as date), 'dd.MM.yyyy', 'ru-RU'), DateBegin) as 'Дата начала'
 			,isnull(format(try_cast(DateEnd as date), 'dd.MM.yyyy', 'ru-RU'), DateEnd) as 'Дата окончания'
 			,FlagActive as 'Активность'
-			,Reason as 'Причина'
-		
-		-- 10.Отсутствует алиас для объекта #BadInsertedRows
+			,Reason as 'Причина'		
+		-- 18.Отсутствует алиас для объекта #BadInsertedRows
 		from #BadInsertedRows
 
 		return
